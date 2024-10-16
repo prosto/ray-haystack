@@ -1,0 +1,224 @@
+<html class="sl-theme-dark">
+
+<head>
+    <title>Pipeline Watch - Run Haystack Pipeline with Ray</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.16.0/cdn/themes/dark.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/svelte-jsoneditor@1.0.3/themes/jse-theme-dark.css" />
+    <link rel="stylesheet" href="/ui/styles.css">
+
+    <script src="https://unpkg.com/htmx.org@2.0.2"
+        integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ"
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
+
+    <script type="module"
+        src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.16.0/cdn/shoelace-autoloader.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/benopotamus/htmx-ext-shoelace/htmx.ext.shoelace.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.2.0/dist/mermaid.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.5.0/dist/svg-pan-zoom.min.js" defer></script>
+
+    <script src="https://unpkg.com/htmx-ext-client-side-templates@2.0.0/client-side-templates.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js" defer></script>
+    <script src="https://pfau-software.de/json-viewer/dist/iife/index.js" defer></script>
+
+    <!-- Load custom JS -->
+    <script type="module" src="/ui/index.js" defer></script>
+</head>
+
+<body hx-ext="client-side-templates, shoelace">
+    <sl-split-panel id="main-split-panel" position="70" style="background: var(--sl-color-neutral-50);">
+        <!-- Left Panel -->
+        <div slot="start">
+            <sl-split-panel id="inner-split-panel" vertical position="50">
+                <!-- Top Panel -->
+                <div id="diagram-panel" slot="start">
+                    <pre id="mermaid" hx-get="/pipeline/mermaid" hx-swap="innerHTML"
+                        hx-on::after-swap="pipeline_watch.drawDiagram()" hx-trigger="load">
+                        <!-- Mermaid Inserted On Load -->
+                    </pre>
+                </div>
+
+                <!-- Bottom Panel -->
+                <div slot="end">
+                    <div style="height: 100%; display: flex; flex-direction: column;">
+                        <div class="pipeline-events-panel__header">
+                            <div style="flex-grow: 1; text-align: center;">Pipeline Events</div>
+                            <div style="margin-left: auto;">
+                                <sl-tooltip content="Reset Colors">
+                                    <sl-icon-button hx-on:click="pipeline_watch.resetComponentColors()" name="palette"
+                                        label="Reset Colors"></sl-icon-button>
+                                </sl-tooltip>
+                                <sl-tooltip content="Clear Events">
+                                    <sl-icon-button
+                                        hx-on:click="document.getElementById('pipeline-events-container').innerHTML = ''"
+                                        name="trash" label="Clear Events"></sl-icon-button>
+                                </sl-tooltip>
+                            </div>
+                        </div>
+
+                        <div id="pipeline-events-streams" style="visibility: hidden;">
+                            <!--SSE connections (elements) will be handled here  -->
+                        </div>
+
+                        <div id="pipeline-events-container"
+                            style="padding: 10px; flex: 1 1 auto; height: 0px; overflow: auto;">
+                            <!-- Data events will be appended here  -->
+                        </div>
+
+                        <template id="pipeline-events-template">
+                            <div hx-ext="sse" sse-close="end" sse-connect="{{eventsUrl}}">
+                                <!-- Each data event will be appended to the container element  -->
+                                <div sse-swap="data" hx-target="#pipeline-events-container" hx-swap="beforeend"
+                                    handlebars-template="pipeline-event-template"></div>
+                            </div>
+                        </template>
+
+                        <template id="pipeline-event-template">
+                            {{#ifEquals type "ray.haystack.pipeline-start"}}
+                            <sl-details>
+                                <div slot="summary" class="event-details__summary">
+                                    {{time}} - [{{type}}]
+                                </div>
+                                <div class="event-details__container">
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">pipeline_inputs:</div>
+                                        <andypf-json-viewer style="flex-grow: 1;" data='{{json data.pipeline_inputs}}'
+                                            show-data-types="false" theme="onedark"></andypf-json-viewer>
+                                    </div>
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">run_queue:</div>
+                                        <andypf-json-viewer style="flex-grow: 1;" data='{{json data.run_queue}}'
+                                            show-data-types="false" expanded="false"
+                                            theme="onedark"></andypf-json-viewer>
+                                    </div>
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">wait_queue:</div>
+                                        <andypf-json-viewer style="flex-grow: 1;" data='{{json data.wait_queue}}'
+                                            show-data-types="false" expanded="false"
+                                            theme="onedark"></andypf-json-viewer>
+                                    </div>
+                                </div>
+                            </sl-details>
+                            {{/ifEquals}}
+
+                            {{#ifEquals type "ray.haystack.component-start"}}
+                            <sl-details hx-on::load="pipeline_watch.changeComponentColor('{{data.name}}', '#2fb57f')">
+                                <div slot="summary" class="event-details__summary">
+                                    {{time}} - [{{type}}] - {{data.name}}
+                                </div>
+                                <div class="event-details__container">
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">name:</div>
+                                        <div>{{data.name}}</div>
+                                    </div>
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">sender_name:</div>
+                                        <div>{{defaultIfEmpty data.sender_name "[None]"}}</div>
+                                    </div>
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">input:</div>
+                                        <andypf-json-viewer style="flex-grow: 1;" data='{{json data.input}}'
+                                            show-data-types="false" theme="onedark"></andypf-json-viewer>
+                                    </div>
+                                </div>
+                            </sl-details>
+                            {{/ifEquals}}
+
+                            {{#ifEquals type "ray.haystack.component-end"}}
+                            <sl-details hx-on::load="pipeline_watch.changeComponentColor('{{data.name}}', '#8fbdaa')">
+                                <div slot="summary" class="event-details__summary">
+                                    {{time}} - [{{type}}] - {{data.name}}
+                                </div>
+                                <div class="event-details__container">
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">
+                                            name:</div>
+                                        <div>{{data.name}}</div>
+                                    </div>
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">output:</div>
+                                        <andypf-json-viewer style="flex-grow: 1;" data='{{json data.output}}'
+                                            show-data-types="false" theme="onedark"></andypf-json-viewer>
+                                    </div>
+                                </div>
+                            </sl-details>
+                            {{/ifEquals}}
+
+                            {{#ifEquals type "ray.haystack.pipeline-end"}}
+                            <sl-details hx-on::load="pipeline_watch.changePipelineStatus(false)">
+                                <div slot="summary" class="event-details__summary">
+                                    {{time}} - [{{type}}]
+                                </div>
+                                <div class="event-details__container">
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">include_outputs_from:</div>
+                                        <andypf-json-viewer style="flex-grow: 1;"
+                                            data='{{json data.include_outputs_from}}' show-data-types="false"
+                                            expanded="false" theme="onedark"></andypf-json-viewer>
+                                    </div>
+                                    <div class="event-details__item">
+                                        <div class="event-details__title">output:</div>
+                                        <andypf-json-viewer style="flex-grow: 1;" data='{{json data.output}}'
+                                            show-data-types="false" theme="onedark"></andypf-json-viewer>
+                                    </div>
+                                </div>
+                            </sl-details>
+                            {{/ifEquals}}
+                        </template>
+                    </div>
+
+                </div>
+            </sl-split-panel>
+        </div>
+
+        <!-- Right Panel -->
+        <div slot="end" style="height: 100%; overflow: auto;">
+
+            <div id="pipeline-parameters-section"
+                style="padding: 10px; display: flex; flex-direction: column; gap: 10px;">
+
+                <form id="pipeline-parameters-form" hx-post="/pipeline/submit" hx-trigger="submit" hx-swap="afterbegin"
+                    hx-target="#pipeline-events-streams" handlebars-template="pipeline-events-template"
+                    hx-on:htmx:after-request="pipeline_watch.changePipelineStatus(true)"
+                    style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- <sl-input type="number" value="100" min="1"
+                        help-text="How many times the pipeline can run the same node before throwing an exception">
+                        <label slot="label" class="pipeline_parameters__input_label">max_loops_allowed</label>
+                    </sl-input> -->
+
+                    <sl-details open="true">
+                        <div slot="summary" class="pipeline_parameters__input_label">
+                            Pipeline Inputs
+                        </div>
+                        <input type="hidden" id="pipeline-inputs" name="pipeline-inputs" value=""
+                            hx-on:htmx:validation:validate="pipeline_watch.validatePipelineInputs(this)"></input>
+                        <div id="pipeline-inputs-editor" class="jse-theme-dark inputs-json-editor"></div>
+                    </sl-details>
+
+                    <sl-details open="true">
+                        <div slot="summary" class="pipeline_parameters__input_label">
+                            Pipeline Settings
+                        </div>
+                        <input type="hidden" id="pipeline-settings" name="pipeline-settings" value=""
+                            hx-on:htmx:validation:validate="pipeline_watch.validatePipelineSettings(this)">
+                        </input>
+                        <div id="pipeline-settings-editor" class="jse-theme-dark inputs-json-editor"></div>
+                    </sl-details>
+                </form>
+
+                <div id="pipeline-actions">
+                    <sl-button id="submit-pipeline-parameters" variant="primary" type="submit"
+                        form="pipeline-parameters-form">
+                        <sl-icon slot="prefix" name="play-circle-fill"></sl-icon>Run Pipeline</sl-button>
+                </div>
+
+            </div>
+        </div>
+
+    </sl-split-panel>
+</body>
+
+</html>

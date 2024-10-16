@@ -1,0 +1,211 @@
+[build-system]
+requires = ["hatchling>=1.8.0", "hatch-regex-commit"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ray-haystack"
+dynamic = ["version"]
+description = 'Haystack pipelines with Ray'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = ["Haystack", "Ray", "semantic-search", "RAG", "AI"]
+authors = [
+    { name = "Sergey Bondarenco", email = "sergey.bondarenco@outlook.com" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = ["haystack-ai", "ray", "mergedeep"]
+
+[project.optional-dependencies]
+tests = ["coverage[toml]>=6.5", "pytest"]
+docs = [
+    "mkdocs>=1.3",
+    "mkdocstrings[python]",
+    "mkdocs-material>=7.3",
+    "mkdocs-coverage>=0.2",
+    "mkdocs-section-index>=0.3",
+    "black>=23.1.0",
+]
+maintain = ["git-changelog>=2.3"]
+quality = ["black>=24.8.0", "ruff>=0.6.4"]
+typing = ["mypy>=1.11.2"]
+all = ["ray-haystack[tests,maintain,quality,typing]"]
+
+[project.urls]
+Documentation = "https://github.com/prosto/ray-haystack"
+Issues = "https://github.com/prosto/ray-haystack/issues"
+Source = "https://github.com/prosto/ray-haystack"
+
+[tool.hatch.version]
+source = "regex_commit"
+path = "src/ray_haystack/__about__.py"
+tag_sign = false
+tag_name = "v{new_version}"
+commit_message = "🚀 Version {new_version}"
+commit_extra_args = ["-a"]                 # make sure all other updates get into single commit
+check_dirty = false
+commit = true
+
+[tool.hatch.envs.default]
+features = ["tests"]
+template = "default"
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = ["- coverage combine", "coverage html"]
+cov = ["test-cov", "cov-report"]
+
+[tool.hatch.envs.dev]
+features = ["all"]
+description = """
+Environment can be used locally for development as it installs all dependencies. Usefull when working in IDE.
+Run `hatch env create dev` in order to create the environment. Works well when you configure hatch to install
+virtual environments into project speicifc dir (e.g. `ray_haystack/.venv`). See `dirs.env` setting by running `hatch config show`.
+"""
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--strict-markers"
+markers = ["unit: unit tests", "integration: integration tests"]
+log_cli = true
+log_cli_level = "INFO"
+
+[tool.hatch.envs.maintain]
+template = "maintain"
+features = ["maintain"]
+
+[tool.hatch.envs.maintain.scripts]
+changelog = "git-changelog --bump 'v{args:.}'"
+bump = [
+    "changelog",              # this will update CHANGELOG.md
+    "hatch version {args:.}", # this will bump version in __about__.py and commit CHANGELOG.md with new tag
+]
+
+[tool.git-changelog]
+bump = "none"
+convention = "conventional"
+in-place = true
+output = "CHANGELOG.md"
+parse-refs = false
+parse-trailers = true
+sections = ["build", "deps", "feat", "fix", "refactor"]
+template = "keepachangelog"
+
+[tool.hatch.envs.lint]
+template = "lint"
+features = ["quality", "typing"]
+
+[tool.hatch.envs.lint.scripts]
+typing = "mypy --install-types --non-interactive {args:src/ray_haystack tests examples}"
+style = ["ruff check {args:.}", "black --check --diff {args:.}"]
+fmt = ["black {args:.}", "ruff --fix {args:.}", "style"]
+all = ["style", "typing"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github", "/scripts"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ray_haystack"]
+
+[tool.black]
+target-version = ["py38"]
+line-length = 120
+skip-string-normalization = true
+
+[tool.ruff]
+target-version = "py38"
+line-length = 120
+
+lint.select = [
+    "A",
+    "ARG",
+    "B",
+    "C",
+    "DTZ",
+    "E",
+    "EM",
+    "F",
+    "FBT",
+    "I",
+    "ICN",
+    "ISC",
+    "N",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "Q",
+    "RUF",
+    "S",
+    "T",
+    "TID",
+    "UP",
+    "W",
+    "YTT",
+]
+lint.ignore = [
+    # Allow function arguments shadowing a Python builtin (e.g. `id`)
+    "A002",
+    "A003",
+    # Allow non-abstract empty methods in abstract base classes
+    "B027",
+    # Allow boolean-typed positional argument in function definition
+    "FBT001",
+    # Allow boolean default positional argument in function definition
+    "FBT002",
+    # Allow boolean positional values in function calls, like `dict.get(... True)`
+    "FBT003",
+    # Ignore checks for possible passwords
+    "S105",
+    "S106",
+    "S107",
+    # Ignore complexity
+    "C901",
+    "PLR0911",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+
+    "EM101",
+    "EM102",
+]
+lint.unfixable = [
+    # Don't touch unused imports
+    "F401",
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.ruff.lint.isort]
+known-first-party = ["ray_haystack"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+"tests/**/*" = ["PLR2004", "S101", "TID252", "E501", "ARG002"]
+
+[tool.coverage.run]
+source_pkgs = ["ray_haystack", "tests"]
+branch = true
+parallel = true
+omit = ["src/ray_haystack/__about__.py"]
+
+[tool.coverage.paths]
+ray_haystack = ["src/ray_haystack", "*/ray-haystack/src/ray_haystack"]
+tests = ["tests", "*/ray-haystack/tests"]
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]

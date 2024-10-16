@@ -1,0 +1,6 @@
+working_dir: "."
+excludes:
+  - ".venv/"
+pip: "./requirements.txt"
+env_vars:
+  OPENAI_API_KEY: "OpenAI API Key"

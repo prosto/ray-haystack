@@ -1,0 +1,2 @@
+ray[default]==2.34.0
+ray-haystack

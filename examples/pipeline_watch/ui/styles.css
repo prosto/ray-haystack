@@ -1,0 +1,69 @@
+html,
+body {
+  height: 100%;
+  margin: 0px;
+  padding: 0px;
+}
+
+#main-split-panel,
+#inner-split-panel {
+  height: 100%;
+}
+
+#diagram-panel {
+  height: 100%;
+  width: 100%;
+  background: var(--sl-color-neutral-50);
+  overflow: hidden;
+}
+
+#mermaid {
+  height: 100%;
+  width: 100%;
+  margin: 0%;
+}
+
+#mermaid > svg {
+  height: 100%;
+  width: 100%;
+  max-width: 100%;
+}
+
+.event-details__summary {
+  font-family: var(--sl-font-mono);
+}
+
+.event-details__container {
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.event-details__item {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.event-details__title {
+  font-weight: var(--sl-font-weight-bold);
+  color: var(--sl-color-primary-500);
+}
+
+.pipeline_parameters__input_label {
+  color: var(--sl-color-emerald-500);
+  letter-spacing: var(--sl-letter-spacing-loose);
+  font-weight: var(--sl-font-weight-bold);
+}
+
+.pipeline-events-panel__header {
+  padding: 10px;
+  font-size: var(--sl-font-size-large);
+  display: flex;
+  align-items: center;
+  background-color: var(--sl-color-neutral-100);
+}
+
+.inputs-json-editor {
+  --jse-message-error-background: #574f50;
+}

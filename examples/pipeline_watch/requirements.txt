@@ -1,0 +1,12 @@
+fastapi
+python-multipart
+sse-starlette
+
+ray[serve]
+ray-haystack
+
+langdetect
+trafilatura
+transformers
+datasets>=2.6.1
+sentence-transformers>=3.0.0
